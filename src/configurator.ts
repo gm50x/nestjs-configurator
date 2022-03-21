@@ -5,33 +5,43 @@ import * as compression from 'compression';
 import helmet from 'helmet';
 import { json } from 'express';
 
+type BearerAuthType = 'http' | 'apiKey' | 'oauth2' | 'openIdConnect';
+
+type SwaggerOptions = {
+  title: string;
+  description: string;
+  version?: string;
+  bearer?: {
+    name: string;
+    type?: BearerAuthType;
+  };
+};
+
+type DefaultOptions = {
+  swagger?: SwaggerOptions;
+  enableCloudEvents?: boolean;
+};
+
 export class Configurator {
-  private readonly contentTypes: Array<string>;
-  private readonly documentBuilder: DocumentBuilder;
-  private useSwagger: boolean;
-  private useContentTypes: boolean;
+  constructor(private readonly app: INestApplication) {}
 
-  constructor(private readonly app: INestApplication) {
-    this.documentBuilder = new DocumentBuilder();
-    this.contentTypes = ['application/json'];
-  }
+  addSwagger(config: SwaggerOptions): Configurator {
+    const { title, description, version = 'v1', bearer } = config;
 
-  setSwaggerTitle(title: string): Configurator {
-    this.useSwagger = true;
-    this.documentBuilder.setTitle(title);
-    return this;
-  }
+    const documentBuilder = new DocumentBuilder()
+      .setTitle(title)
+      .setDescription(description)
+      .setVersion(version);
 
-  setSwaggerDescription(description: string): Configurator {
-    this.useSwagger = true;
-    this.documentBuilder.setDescription(description);
-    return this;
-  }
+    if (bearer) {
+      const { name, type = 'http' } = bearer;
+      documentBuilder.addBearerAuth({ type }, name);
+    }
 
-  setSwaggerVersion(version: string, environment = '') {
-    this.useSwagger = true;
-    const _version = `${version}${environment ? '-' : ''}${environment}`;
-    this.documentBuilder.setVersion(_version);
+    const swaggerDocument = documentBuilder.build();
+    const document = SwaggerModule.createDocument(this.app, swaggerDocument);
+    SwaggerModule.setup('docs', this.app, document);
+
     return this;
   }
 
@@ -64,20 +74,31 @@ export class Configurator {
   }
 
   addCloudEvents(): Configurator {
-    this.useContentTypes = true;
-    this.contentTypes.push('application/cloudevents+json');
+    this.app.use(
+      json({ type: ['application/json', 'application/cloudevents+json'] }),
+    );
     return this;
   }
 
-  build() {
-    if (this.useContentTypes) {
-      this.app.use(json({ type: this.contentTypes }));
+  /**
+   * Setup defaults for api projects:
+   * - compression
+   * - cors
+   * - helmet
+   * - serialization
+   * - Optional: swagger
+   * - Optional: application/cloudevents+json serialization
+   */
+  setDefaults(config: DefaultOptions): Configurator {
+    this.addCompression().addCors().addHelmet().addSerialization();
+
+    if (config.swagger) {
+      this.addSwagger(config.swagger);
+    }
+    if (config.enableCloudEvents) {
+      this.addCloudEvents();
     }
 
-    if (this.useSwagger) {
-      const swaggerDocument = this.documentBuilder.build();
-      const document = SwaggerModule.createDocument(this.app, swaggerDocument);
-      SwaggerModule.setup('docs', this.app, document);
-    }
+    return this;
   }
 }
