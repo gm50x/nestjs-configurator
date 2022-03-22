@@ -89,7 +89,7 @@ export class Configurator {
    * - Optional: swagger
    * - Optional: application/cloudevents+json serialization
    */
-  setDefaults(config: DefaultOptions): Configurator {
+  setDefaults(config: DefaultOptions = {}): Configurator {
     this.addCompression().addCors().addHelmet().addSerialization();
 
     if (config.swagger) {
