@@ -1,13 +1,16 @@
 {
   "name": "@gm50x/nestjs-configurator",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "author": "",
   "private": false,
   "main": "dist/index.js",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gm50x/nestjs-configurator"
+  },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
     "access": "public"
   },
   "scripts": {
